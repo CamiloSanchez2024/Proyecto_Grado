@@ -1,0 +1,37 @@
+# Entornos virtuales
+backend/secure_api/venv/
+Frontend/CryptoGroup/venv/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Archivos de entorno
+.env
+backend/.env
+frontend/.env
+
+# Archivos de logs
+*.log
+
+# Node.js (si tu frontend es JS)
+frontend/node_modules/
+
+# Otros
+.DS_Store
+backend/example_fronted.py
+backend/.qodo/
+frontend/.qodo/
+frontend/CryptoGroup/build/app/localpycs/
+
+# Artefactos de build (PyInstaller, etc.)
+build/
+dist/
+*.spec
+localpycs/
+*.toc
+*.pkg
+*.pyz
+*.zip
+*.html
+.qodo/

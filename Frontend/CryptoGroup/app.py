@@ -87,19 +87,7 @@ mediante tecnologías modernas de cifrado.
 
     boton.pack(pady=10)
 
-    boton = tk.Button(
-        panel,
-        text="Crear Usuario",
-        font=("Segoe UI", 11, "bold"),
-        bg=COLOR_BOTON,
-        fg="white",
-        width=20,
-        height=2,
-        bd=0,
-        command=pantalla_registro
-    )
 
-    boton.pack(pady=10)
 # -------- LOGIN --------
 import requests
 
@@ -292,26 +280,50 @@ def verificar_login():
     usuario = entry_usuario.get()
     password = entry_password.get()
 
-    if usuario == "admin" and password == "admin":
-        panel_seguridad()
-    else:
-        messagebox.showerror("Error", "Usuario o contraseña incorrectos")
+    url = "http://localhost:8000/api/v1/auth/login"
+    payload = {
+        "username": usuario,
+        "password": password
+    }
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            # Login exitoso
+            data = response.json()
+            access_token = data.get("access_token")
+            # Obtener info usuario
+            headers = {"Authorization": f"Bearer {access_token}"}
+            userinfo_url = "http://localhost:8000/api/v1/auth/me"
+            try:
+                userinfo_resp = requests.get(userinfo_url, headers=headers)
+                if userinfo_resp.status_code == 200:
+                    userinfo = userinfo_resp.json()
+                    panel_seguridad(userinfo)
+                else:
+                    panel_seguridad(None)
+            except Exception:
+                panel_seguridad(None)
+        else:
+            try:
+                data = response.json()
+                detalle = data.get("detail", "Usuario o contraseña incorrectos")
+            except Exception:
+                detalle = "Usuario o contraseña incorrectos"
+            messagebox.showerror("Error", detalle)
+    except Exception as e:
+        messagebox.showerror("Error", f"No se pudo conectar al servidor: {e}")
     
 
 # -------- PANEL DE SEGURIDAD --------
-def panel_seguridad():
-
+def panel_seguridad(userinfo=None):
     limpiar()
-
     panel = tk.Frame(
         ventana,
         bg=COLOR_PANEL,
         padx=40,
         pady=30
     )
-
     panel.place(relx=0.5, rely=0.45, anchor="center")
-
     titulo = tk.Label(
         panel,
         text="Panel de Seguridad",
@@ -319,9 +331,7 @@ def panel_seguridad():
         fg=COLOR_TEXTO,
         bg=COLOR_PANEL
     )
-
     titulo.pack(pady=15)
-
     tk.Button(
         panel,
         text="Encriptar Archivo",
@@ -333,7 +343,19 @@ def panel_seguridad():
         bd=0,
         command=encriptar_archivo
     ).pack(pady=10)
-
+    # Botón crear usuario solo para superusuario
+    if userinfo and userinfo.get("is_superuser"):
+        tk.Button(
+            panel,
+            text="Crear Usuario",
+            font=("Segoe UI",11,"bold"),
+            bg=COLOR_BOTON,
+            fg="white",
+            width=22,
+            height=2,
+            bd=0,
+            command=pantalla_registro
+        ).pack(pady=10)
     tk.Button(
         panel,
         text="Cerrar sesión",
@@ -344,7 +366,6 @@ def panel_seguridad():
         bd=0,
         command=pantalla_inicio
     ).pack(pady=10)
-
     tk.Button(
         panel,
         text="Desencriptar Archivo",
@@ -359,33 +380,23 @@ def panel_seguridad():
 
 # -------- ENCRIPTAR ARCHIVO --------
 def encriptar_archivo():
-
     archivo = filedialog.askopenfilename()
-
     if not archivo:
         return
-
     clave = simpledialog.askstring(
-    "Clave",
-    "Ingrese una clave para encriptar:"
-)
-
+        "Clave",
+        "Ingrese una clave para encriptar:"
+    )
     if not clave:
         return
-
     key = clave.encode().ljust(16)[:16]
     cipher = AES.new(key, AES.MODE_EAX)
-
     with open(archivo, "rb") as f:
         data = f.read()
-
     ciphertext, tag = cipher.encrypt_and_digest(data)
-
     archivo_encriptado = archivo + ".enc"
-
     with open(archivo_encriptado, "wb") as f:
         [f.write(x) for x in (cipher.nonce, tag, ciphertext)]
-
     messagebox.showinfo(
         "Encriptación",
         f"Archivo encriptado correctamente:\n{archivo_encriptado}"

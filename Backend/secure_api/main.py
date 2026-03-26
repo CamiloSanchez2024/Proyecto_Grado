@@ -11,6 +11,7 @@ from secure_api.db.session import engine, Base, AsyncSessionLocal
 from secure_api.middleware.logging_middleware import RequestLoggingMiddleware
 from secure_api.routers.auth_router import router as auth_router
 from secure_api.routers.users_router import router as users_router
+from secure_api.routers.proteccion_datos_router import router as proteccion_datos_router
 #from secure_api.routers.resources_router import router as resources_router
 
 settings = get_settings()
@@ -102,6 +103,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=PREFIX)
 app.include_router(users_router, prefix=PREFIX)
+app.include_router(proteccion_datos_router, prefix=PREFIX)
 #app.include_router(resources_router, prefix=PREFIX)
 
 

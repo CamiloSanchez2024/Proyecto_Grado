@@ -35,3 +35,5 @@ localpycs/
 *.zip
 *.html
 .qodo/
+*.xlsx
+.cursor/

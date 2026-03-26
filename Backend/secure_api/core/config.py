@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_ATTEMPTS: int = 5
     RATE_LIMIT_WINDOW_SECONDS: int = 300
 
+    # ── Protección de datos ───────────────────────────────
+    CLAVE_MAESTRA_AES: str = "CAMBIAR_EN_PRODUCCION_CON_32_BYTES_MINIMO_1234"
+    RUTA_STORAGE: str = "storage"
+
     class Config:
         env_file = str(ENV_FILE)   # ← ruta absoluta, siempre funciona
         case_sensitive = True

@@ -1,0 +1,93 @@
+{
+  "ruta_original": "C:\\Users\\Camilo S\\Documents\\Estudio\\Proyectos\\Proyecto Grado\\Backend\\secure_api\\storage\\uploads\\Datos_Prueba.xlsx",
+  "configuraciones": [
+    {
+      "columna": "Nombres",
+      "tipo_proteccion": "aes-256"
+    },
+    {
+      "columna": "Apellidos",
+      "tipo_proteccion": "anonimizacion"
+    },
+    {
+      "columna": "Ciudad",
+      "tipo_proteccion": "tokenizacion"
+    },
+    {
+      "columna": "Edad",
+      "tipo_proteccion": "pseudonimizacion"
+    },
+    {
+      "columna": "Tipo_Cliente",
+      "tipo_proteccion": "tokenizacion"
+    }
+  ],
+  "clave_usuario_utilizada": true,
+  "mapas": {
+    "tokenizacion": {
+      "TKN-64E274196691": "Bogot\u00e1",
+      "TKN-F5A24FACE70C": "Medell\u00edn",
+      "TKN-F8BE2A4C2310": "Cali",
+      "TKN-42EA09656C06": "Barranquilla",
+      "TKN-BF1C4F78D092": "Cartagena",
+      "TKN-356541BE0836": "Bucaramanga",
+      "TKN-DAF65986636E": "Pereira",
+      "TKN-28597FE89181": "Manizales",
+      "TKN-8D4E4EF3EA52": "Regular",
+      "TKN-6C2F2888C561": "Premium",
+      "TKN-944B88D06011": "VIP"
+    },
+    "pseudonimizacion": {
+      "PSN-F7913D3263B8E223": "28",
+      "PSN-34D971A93DA9913A": "35",
+      "PSN-7433166EB31DBF7C": "24",
+      "PSN-D05762473C782A09": "42",
+      "PSN-0BBB9FF351D6DCC8": "30",
+      "PSN-2D306C6CC49FEE65": "37",
+      "PSN-5D34C1DADC9535AE": "29",
+      "PSN-B689500F27724380": "41",
+      "PSN-2080459CAD4523D1": "50",
+      "PSN-3634648B16CE195C": "26",
+      "PSN-DCB572F200625F5A": "33",
+      "PSN-EA9940318CB478FC": "31",
+      "PSN-15EB092B400E6A2F": "45",
+      "PSN-52518789DE53D416": "27",
+      "PSN-706E7AEED214B28D": "38",
+      "PSN-7C936A2A36A3B9D2": "46",
+      "PSN-F66BC908B828591B": "34",
+      "PSN-400CFB475ABCFCF2": "25",
+      "PSN-0E0F04382AA0F1A9": "40",
+      "PSN-4783193E7302CCAE": "29",
+      "PSN-F8886354718DC499": "44",
+      "PSN-CDCC5F05DAB2563A": "36",
+      "PSN-21F4F5205791384C": "28",
+      "PSN-07D81F10F1AD1D2A": "48",
+      "PSN-E16C1C6F757E7E1D": "23",
+      "PSN-216EB0C35CFDFC82": "32",
+      "PSN-F88A98FADAF67966": "47",
+      "PSN-8E289632AF2B6B36": "30",
+      "PSN-836B205B35A83EC4": "39",
+      "PSN-38B976C317274B58": "27",
+      "PSN-BE4EDFD6144987F0": "31",
+      "PSN-0C445F314F2C2484": "45",
+      "PSN-E8254826D9E37BD3": "27",
+      "PSN-DA4620F5D5852906": "38",
+      "PSN-D5C66A4B26E151FD": "46",
+      "PSN-AF69F4EF43B17DE3": "34",
+      "PSN-44EB80FC5F4A17DD": "25",
+      "PSN-9D82D3F05C476DB9": "40",
+      "PSN-D4A50EB980B18F85": "29",
+      "PSN-19AA53C8FCC0F84B": "44",
+      "PSN-D457E02C566E48D0": "28",
+      "PSN-9AECB6D83881B8A9": "48",
+      "PSN-6FE53564F55D82C3": "23",
+      "PSN-0C81A2BCBC5FF5C9": "32",
+      "PSN-06F5FB6D8AAD7F41": "47",
+      "PSN-940FF670BDCD42AD": "30",
+      "PSN-EE11143CB63A3D89": "46",
+      "PSN-56584BBF9241EBF6": "34",
+      "PSN-9409E53A198C9465": "25",
+      "PSN-DF133710520D735B": "40"
+    }
+  }
+}

@@ -37,3 +37,6 @@ localpycs/
 .qodo/
 *.xlsx
 .cursor/
+.agents/
+skills-lock.json
+Backend/secure_api/storage/

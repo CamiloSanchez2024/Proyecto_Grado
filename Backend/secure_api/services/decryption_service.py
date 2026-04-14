@@ -25,10 +25,14 @@ class ServicioDesencriptacion:
         ruta_archivo: str,
         clave_usuario: str,
         configuracion: list[dict[str, str]] | None = None,
+        id_archivo: str | None = None,
     ) -> Path:
         dataframe = self._procesador.leer_archivo_a_dataframe(ruta_archivo)
-        metadata = self._leer_metadata(ruta_archivo)
-        configuraciones = configuracion or metadata.get("configuraciones", [])
+        metadata = self._leer_metadata(ruta_archivo, id_archivo=id_archivo)
+        if configuracion:
+            configuraciones = configuracion
+        else:
+            configuraciones = metadata.get("configuraciones", [])
         mapas = metadata.get("mapas", {})
 
         for item in configuraciones:
@@ -38,8 +42,8 @@ class ServicioDesencriptacion:
                 continue
             if tipo_proteccion == "aes-256":
                 dataframe[columna] = dataframe[columna].apply(
-                    lambda valor: self._desencriptar_aes(
-                        str(valor), clave_usuario=clave_usuario
+                    lambda valor: self._desencriptar_aes_celda(
+                        valor, clave_usuario=clave_usuario
                     )
                 )
             elif tipo_proteccion == "tokenizacion":
@@ -53,13 +57,21 @@ class ServicioDesencriptacion:
                     lambda valor: mapa_pseudonimos.get(str(valor), str(valor))
                 )
 
-        ruta_salida = self._generar_ruta_desencriptado(ruta_archivo)
+        ruta_salida = self._ruta_salida_desencriptado(ruta_archivo, metadata)
         extension = ruta_salida.suffix.lower()
         if extension == ".csv":
-            dataframe.to_csv(ruta_salida, index=False)
+            dataframe.to_csv(ruta_salida, index=False, encoding="utf-8-sig")
         else:
-            dataframe.to_excel(ruta_salida, index=False)
+            dataframe.to_excel(ruta_salida, index=False, engine="openpyxl")
         return ruta_salida
+
+    def _desencriptar_aes_celda(self, valor: Any, clave_usuario: str) -> str:
+        if pd.isna(valor):
+            return ""
+        texto = str(valor).strip()
+        if not texto or texto.lower() == "nan":
+            return ""
+        return self._desencriptar_aes(texto, clave_usuario=clave_usuario)
 
     def _desencriptar_aes(self, valor_cifrado: str, clave_usuario: str) -> str:
         paquete = base64.b64decode(valor_cifrado.encode("utf-8"))
@@ -77,12 +89,31 @@ class ServicioDesencriptacion:
             return texto.decode("utf-8")
 
     @staticmethod
-    def _generar_ruta_desencriptado(ruta_archivo: str) -> Path:
-        ruta = Path(ruta_archivo)
-        return ruta.with_name(f"desencriptado_{ruta.name}")
+    def _ruta_salida_desencriptado(
+        ruta_archivo_procesado: str, metadata: dict[str, Any]
+    ) -> Path:
+        """
+        Nombre desencriptado_ + mismo stem que el procesado, extensión del
+        archivo original (metadata) para devolver .xlsx si se subió .xlsx.
+        """
+        ruta_proc = Path(ruta_archivo_procesado)
+        stem = ruta_proc.stem
+        ext = ruta_proc.suffix.lower()
+        ruta_orig = metadata.get("ruta_original")
+        if ruta_orig:
+            ext_orig = Path(str(ruta_orig)).suffix.lower()
+            if ext_orig in {".csv", ".xlsx", ".xls"}:
+                ext = ext_orig
+        return ruta_proc.parent / f"desencriptado_{stem}{ext}"
 
-    def _leer_metadata(self, ruta_archivo: str) -> dict[str, Any]:
+    def _leer_metadata(
+        self, ruta_archivo: str, id_archivo: str | None = None
+    ) -> dict[str, Any]:
         ruta_metadata = self._procesador.obtener_ruta_metadata(ruta_archivo)
-        if not ruta_metadata.exists():
-            return {}
-        return json.loads(ruta_metadata.read_text(encoding="utf-8"))
+        if ruta_metadata.exists():
+            return json.loads(ruta_metadata.read_text(encoding="utf-8"))
+        if id_archivo:
+            respaldo = Path(ruta_archivo).parent / f"{id_archivo}.meta.json"
+            if respaldo.exists():
+                return json.loads(respaldo.read_text(encoding="utf-8"))
+        return {}

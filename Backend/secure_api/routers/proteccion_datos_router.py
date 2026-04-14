@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -27,6 +28,20 @@ from secure_api.services.decryption_service import ServicioDesencriptacion
 from secure_api.services.file_processor import ProcesadorArchivos
 
 router = APIRouter(prefix="/proteccion-datos", tags=["Proteccion Datos"])
+
+
+def _media_type_por_extension(ruta: Path) -> str:
+    ext = ruta.suffix.lower()
+    if ext == ".xlsx":
+        return (
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        )
+    if ext == ".xls":
+        return "application/vnd.ms-excel"
+    if ext == ".csv":
+        return "text/csv; charset=utf-8"
+    return "application/octet-stream"
 
 
 @router.post("/subir-archivo", status_code=status.HTTP_201_CREATED)
@@ -125,6 +140,11 @@ async def procesar_archivo(
         clave_usuario=payload.clave_usuario,
     )
 
+    meta_lateral = ProcesadorArchivos.obtener_ruta_metadata(ruta_salida)
+    if meta_lateral.exists():
+        respaldo = meta_lateral.parent / f"{archivo_db.id}.meta.json"
+        shutil.copy2(meta_lateral, respaldo)
+
     archivo_db.ruta_archivo_procesado = str(ruta_salida)
     archivo_db.estado = "procesado"
 
@@ -206,16 +226,30 @@ async def desencriptar_archivo(
         detalle={"id_archivo": payload.id_archivo},
     )
 
+    if payload.configuraciones:
+        configuracion_desencriptar = [item.model_dump() for item in payload.configuraciones]
+    else:
+        consulta_conf = await db.execute(
+            select(ConfiguracionEncriptacion).where(
+                ConfiguracionEncriptacion.id_archivo == payload.id_archivo
+            )
+        )
+        filas_conf = consulta_conf.scalars().all()
+        por_columna: dict[str, dict[str, str]] = {}
+        for fila in filas_conf:
+            por_columna[fila.nombre_columna] = {
+                "columna": fila.nombre_columna,
+                "tipo_proteccion": fila.tipo_proteccion,
+            }
+        configuracion_desencriptar = list(por_columna.values()) if por_columna else None
+
     try:
         servicio_desencriptacion = ServicioDesencriptacion()
         ruta_desencriptada = servicio_desencriptacion.desencriptar_archivo(
             ruta_archivo=archivo_db.ruta_archivo_procesado,
             clave_usuario=payload.clave_usuario,
-            configuracion=(
-                [item.model_dump() for item in payload.configuraciones]
-                if payload.configuraciones
-                else None
-            ),
+            configuracion=configuracion_desencriptar,
+            id_archivo=payload.id_archivo,
         )
     finally:
         # Manejo seguro de memoria: eliminar referencia de clave.
@@ -229,10 +263,11 @@ async def desencriptar_archivo(
             "columnas_procesadas": len(payload.configuraciones or []),
         },
     )
+    ruta_path = Path(ruta_desencriptada)
     return FileResponse(
         path=str(ruta_desencriptada),
-        filename=Path(ruta_desencriptada).name,
-        media_type="application/octet-stream",
+        filename=ruta_path.name,
+        media_type=_media_type_por_extension(ruta_path),
     )
 
 

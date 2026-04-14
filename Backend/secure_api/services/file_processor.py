@@ -6,6 +6,7 @@ from typing import Any
 import pandas as pd
 
 from secure_api.core.config import get_settings
+from secure_api.utils.csv_encoding import read_csv_with_detected_encoding
 from secure_api.services.data_classifier import ClasificadorDatos
 from secure_api.services.encryption_service import ServicioEncriptacion
 
@@ -41,7 +42,7 @@ class ProcesadorArchivos:
     def leer_archivo_a_dataframe(self, ruta_archivo: str) -> pd.DataFrame:
         extension = Path(ruta_archivo).suffix.lower()
         if extension == ".csv":
-            return pd.read_csv(ruta_archivo)
+            return read_csv_with_detected_encoding(ruta_archivo)
         if extension in {".xlsx", ".xls"}:
             return pd.read_excel(ruta_archivo)
         raise ValueError("Tipo de archivo no soportado. Use CSV o Excel")

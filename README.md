@@ -19,7 +19,8 @@ Construir una solucion empresarial para:
 El proyecto se divide en dos bloques:
 
 - `Backend/secure_api` (FastAPI + PostgreSQL + servicios de seguridad)
-- `Frontend/CryptoGroup` (app de escritorio en CustomTkinter)
+- `Frontend/CryptoGroup` (app de escritorio en CustomTkinter; referencia de flujo)
+- `Frontend/crypto-group-web` (cliente web React + TypeScript + Vite; mismos endpoints)
 
 ### Backend (`Backend/secure_api`)
 
@@ -71,6 +72,11 @@ Tecnologia UI:
 - `CTkMessagebox`
 - `Pillow`
 - `requests`
+
+### Frontend web (`Frontend/crypto-group-web`)
+
+Cliente SPA que consume la misma API (`VITE_API_URL`, por defecto `http://localhost:8000/api/v1`).
+Ver [Frontend/crypto-group-web/README.md](Frontend/crypto-group-web/README.md) para desarrollo, tests y Docker.
 
 ## Funcionamiento del sistema (flujo)
 
@@ -340,3 +346,8 @@ Pruebas minimas recomendadas:
 - La logica de procesamiento se ejecuta en backend.
 - El frontend solo consume endpoints.
 - La base esta lista para crecer con migraciones Alembic y mas pruebas automatizadas.
+
+
+## 9) Docker
+creacion imagen postgress
+docker run --name CryptoUGroup -e POSTGRES_PASSWORD=CryptoUGroup -p 5432:5432 -d postgres:15

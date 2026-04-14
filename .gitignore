@@ -40,3 +40,5 @@ localpycs/
 .agents/
 skills-lock.json
 Backend/secure_api/storage/
+Rediseño.MD
+modificacioUI.MD

@@ -58,12 +58,12 @@ Cliente web: flujos de **login/registro**, **carga**, **detección**, **configur
 
 - **Backend**: API REST con **FastAPI**, capas **routers → servicios → modelos**, sesión **async** (SQLAlchemy + asyncpg), configuración con **Pydantic Settings** (`core/config.py`).
 - **Frontend**: SPA con **React 19**, **React Router**, **TanStack Query**, **Zustand** para estado; peticiones con **Axios** e interceptores para JWT/refresh (`Frontend/crypto-group-web/src/services/api.ts`).
-- **Despliegue**: `docker-compose` orquesta **PostgreSQL 16**, **backend** (imagen Python 3.12) y **frontend** (Nginx sirve estático y hace *reverse proxy* a `/api/` y documentación embebida vía `/docs`, `/openapi.json`, `/redoc`).
+- **Despliegue**: `docker-compose` orquesta **PostgreSQL 16**, **backend** (FastAPI con `uvicorn --reload`) y **frontend** (Vite dev server con *hot reload*).
 
 ### Base URL de la API
 
 - Desarrollo típico: `http://localhost:8000/api/v1`
-- Con stack Docker y proxy Nginx del frontend: el navegador puede usar rutas relativas bajo `/api/` (ver variable `VITE_API_URL` en build).
+- Con stack Docker actual, el frontend se publica en `http://localhost:5173` y consume la API por `VITE_API_URL` (por defecto `http://localhost:8000/api/v1`).
 
 ---
 
@@ -114,7 +114,7 @@ Proyecto Grado/
 │       │   ├── stores/          # Zustand
 │       │   ├── components/
 │       │   └── ...
-│       ├── Dockerfile             # Build estático + Nginx
+│       ├── Dockerfile             # Multi-stage (builder Vite + runner Nginx)
 │       ├── nginx.conf             # Proxy a backend en Docker
 │       ├── package.json
 │       └── .env.example
@@ -183,7 +183,7 @@ copy docker.env.example .env
 docker compose up --build
 ```
 
-Variables útiles (ver `docker.env.example`): `POSTGRES_*`, `SECRET_KEY`, `CLAVE_MAESTRA_AES`, `FRONTEND_PORT`, `BACKEND_PORT`, `VITE_API_URL` (en build del frontend, por defecto `/api/v1` para mismo origen vía Nginx).
+Variables útiles (ver `docker.env.example`): `POSTGRES_*`, `SECRET_KEY`, `CLAVE_MAESTRA_AES`, `FRONTEND_PORT`, `BACKEND_PORT`, `VITE_API_URL` (en entorno del contenedor frontend; por defecto `http://localhost:8000/api/v1`).
 
 ### 3) Backend (desarrollo local)
 
@@ -250,7 +250,7 @@ npm test
 | Servidor Vite | `npm run dev` |
 | Build producción web | `npm run build` |
 | Lint web | `npm run lint` |
-| Levantar todo con Docker | `docker compose up --build` |
+| Levantar todo con Docker (hot reload) | `docker compose up --build` |
 | Solo imagen web (manual) | `docker build -t cryptougroup-web Frontend/crypto-group-web` |
 
 ---
@@ -298,7 +298,7 @@ npm test
 
 - Si el backend no conecta a la BD, revisar `POSTGRES_*` y que PostgreSQL esté accesible.
 - El **rate limit** de login es en memoria: en varias réplicas del mismo servicio, valorar un almacén compartido (p. ej. Redis).
-- Tras cambios en variables de entorno del frontend embebidas en build (`VITE_*`), reconstruir la imagen o ejecutar `npm run build` de nuevo.
+- Con bind mounts, cambios en código de backend/frontend se reflejan sin rebuild completo; si cambias dependencias o Dockerfile, sí conviene reconstruir (`docker compose up --build`).
 
 ---
 

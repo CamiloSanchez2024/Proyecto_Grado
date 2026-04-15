@@ -1,8 +1,17 @@
 import json
 import shutil
-from pathlib import Path
+from pathlib import Path as FilePath
 
-from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Path as ApiPath,
+    Query,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +44,7 @@ router = APIRouter(
 )
 
 
-def _media_type_por_extension(ruta: Path) -> str:
+def _media_type_por_extension(ruta: FilePath) -> str:
     ext = ruta.suffix.lower()
     if ext == ".xlsx":
         return (
@@ -75,7 +84,7 @@ async def subir_archivo(
     if not archivo.filename:
         raise HTTPException(status_code=400, detail="Archivo invalido")
 
-    extension = Path(archivo.filename).suffix.lower()
+    extension = FilePath(archivo.filename).suffix.lower()
     if extension not in {".csv", ".xlsx", ".xls"}:
         raise HTTPException(status_code=400, detail="Solo se permiten CSV y Excel")
 
@@ -227,7 +236,7 @@ async def procesar_archivo(
     return ProcesarArchivoResponse(
         id_archivo=archivo_db.id,
         estado=archivo_db.estado,
-        nombre_archivo_procesado=Path(ruta_salida).name,
+        nombre_archivo_procesado=FilePath(ruta_salida).name,
     )
 
 
@@ -241,7 +250,9 @@ async def procesar_archivo(
     },
 )
 async def descargar_archivo(
-    id_archivo: str = Path(..., description="ID del archivo cuyo resultado procesado se descarga"),
+    id_archivo: str = ApiPath(
+        ..., description="ID del archivo cuyo resultado procesado se descarga"
+    ),
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FileResponse:
@@ -263,7 +274,7 @@ async def descargar_archivo(
 
     return FileResponse(
         path=archivo_db.ruta_archivo_procesado,
-        filename=Path(archivo_db.ruta_archivo_procesado).name,
+        filename=FilePath(archivo_db.ruta_archivo_procesado).name,
         media_type="application/octet-stream",
     )
 
@@ -339,7 +350,7 @@ async def desencriptar_archivo(
             "columnas_procesadas": len(payload.configuraciones or []),
         },
     )
-    ruta_path = Path(ruta_desencriptada)
+    ruta_path = FilePath(ruta_desencriptada)
     return FileResponse(
         path=str(ruta_desencriptada),
         filename=ruta_path.name,
@@ -371,8 +382,8 @@ async def comparar_archivos(
     db: AsyncSession = Depends(get_db),
 ) -> CompararArchivosResponse:
     procesador = ProcesadorArchivos()
-    extension_1 = Path(archivo_original.filename or "").suffix.lower()
-    extension_2 = Path(archivo_desencriptado.filename or "").suffix.lower()
+    extension_1 = FilePath(archivo_original.filename or "").suffix.lower()
+    extension_2 = FilePath(archivo_desencriptado.filename or "").suffix.lower()
     permitidas = {".csv", ".xlsx", ".xls"}
     if extension_1 not in permitidas or extension_2 not in permitidas:
         raise HTTPException(status_code=400, detail="Solo se permiten CSV y Excel")

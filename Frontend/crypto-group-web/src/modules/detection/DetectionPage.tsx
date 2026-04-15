@@ -49,7 +49,7 @@ export function DetectionPage() {
         <div className="grid grid-cols-4 gap-2 border-b border-[var(--color-border-default)] bg-[var(--color-surface)] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
           <span>Columna</span>
           <span>Tipo detectado</span>
-          <span>Confianza</span>
+          <span>Sensibilidad</span>
           <span className="text-center">Incluida</span>
         </div>
         <div className="max-h-[420px] overflow-auto">

@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 
 # --- Build ---
-FROM node:22-alpine AS builder
+FROM node:22.12-alpine AS builder
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --include=optional
 
 COPY . .
 RUN npm run build

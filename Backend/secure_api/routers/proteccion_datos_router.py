@@ -2,12 +2,13 @@ import json
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from secure_api.core.dependencies import get_current_user
+from secure_api.core.openapi import responses_auth, responses_file_binary
 from secure_api.db.session import get_db
 from secure_api.models.archivo import Archivo
 from secure_api.models.configuracion_encriptacion import ConfiguracionEncriptacion
@@ -21,13 +22,17 @@ from secure_api.schemas.proteccion_datos import (
     LogAuditoriaResponse,
     ProcesarArchivoRequest,
     ProcesarArchivoResponse,
+    SubirArchivoResponse,
 )
 from secure_api.services.audit_service import ServicioAuditoria
 from secure_api.services.comparador_service import ServicioComparadorArchivos
 from secure_api.services.decryption_service import ServicioDesencriptacion
 from secure_api.services.file_processor import ProcesadorArchivos
 
-router = APIRouter(prefix="/proteccion-datos", tags=["Proteccion Datos"])
+router = APIRouter(
+    prefix="/proteccion-datos",
+    tags=["Protección de datos"],
+)
 
 
 def _media_type_por_extension(ruta: Path) -> str:
@@ -44,12 +49,29 @@ def _media_type_por_extension(ruta: Path) -> str:
     return "application/octet-stream"
 
 
-@router.post("/subir-archivo", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/subir-archivo",
+    status_code=status.HTTP_201_CREATED,
+    response_model=SubirArchivoResponse,
+    summary="Subir archivo tabular",
+    description=(
+        "Acepta **CSV**, **XLS** o **XLSX**. El nombre se sanitiza y el contenido no puede estar vacío. "
+        "Queda asociado al usuario autenticado y se registra en auditoría."
+    ),
+    responses={
+        **responses_auth(),
+        201: {"description": "Archivo guardado; devuelve `id_archivo` para pasos siguientes."},
+        400: {"description": "Extensión no permitida o archivo vacío."},
+    },
+)
 async def subir_archivo(
-    archivo: UploadFile = File(...),
+    archivo: UploadFile = File(
+        ...,
+        description="Archivo `.csv`, `.xlsx` o `.xls`",
+    ),
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> SubirArchivoResponse:
     if not archivo.filename:
         raise HTTPException(status_code=400, detail="Archivo invalido")
 
@@ -79,12 +101,32 @@ async def subir_archivo(
         id_usuario=usuario_actual.id,
         detalle={"id_archivo": archivo_db.id, "nombre": archivo_db.nombre_original},
     )
-    return {"id_archivo": archivo_db.id, "nombre_archivo": archivo_db.nombre_original}
+    return SubirArchivoResponse(
+        id_archivo=archivo_db.id,
+        nombre_archivo=archivo_db.nombre_original,
+    )
 
 
-@router.post("/analizar-archivo", response_model=AnalisisArchivoResponse)
+@router.post(
+    "/analizar-archivo",
+    response_model=AnalisisArchivoResponse,
+    summary="Analizar columnas sensibles",
+    description=(
+        "Ejecuta el clasificador sobre el archivo previamente subido: lista columnas, "
+        "marca sensibles y cuenta filas. Actualiza estado del archivo a `analizado`."
+    ),
+    responses={
+        **responses_auth(),
+        200: {"description": "Análisis completado."},
+        404: {"description": "Archivo no existe o no pertenece al usuario."},
+    },
+)
 async def analizar_archivo(
-    id_archivo: str,
+    id_archivo: str = Query(
+        ...,
+        description="Identificador devuelto por `POST /subir-archivo`",
+        example="550e8400-e29b-41d4-a716-446655440000",
+    ),
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AnalisisArchivoResponse:
@@ -114,7 +156,21 @@ async def analizar_archivo(
     return AnalisisArchivoResponse(id_archivo=archivo_db.id, **resultado)
 
 
-@router.post("/procesar-archivo", response_model=ProcesarArchivoResponse)
+@router.post(
+    "/procesar-archivo",
+    response_model=ProcesarArchivoResponse,
+    summary="Proteger archivo",
+    description=(
+        "Aplica las técnicas configuradas por columna y genera un archivo de salida protegido. "
+        "Persiste configuraciones y deja el recurso listo para descarga."
+    ),
+    responses={
+        **responses_auth(),
+        200: {"description": "Procesamiento completado."},
+        400: {"description": "Sin configuraciones u otra validación de negocio."},
+        404: {"description": "Archivo no encontrado."},
+    },
+)
 async def procesar_archivo(
     payload: ProcesarArchivoRequest,
     usuario_actual: User = Depends(get_current_user),
@@ -175,9 +231,17 @@ async def procesar_archivo(
     )
 
 
-@router.get("/descargar-archivo/{id_archivo}")
+@router.get(
+    "/descargar-archivo/{id_archivo}",
+    summary="Descargar archivo procesado",
+    description="Devuelve el binario del archivo protegido generado en el paso de procesamiento.",
+    responses={
+        **responses_file_binary(),
+        404: {"description": "No hay archivo procesado para ese id o no pertenece al usuario."},
+    },
+)
 async def descargar_archivo(
-    id_archivo: str,
+    id_archivo: str = Path(..., description="ID del archivo cuyo resultado procesado se descarga"),
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FileResponse:
@@ -204,7 +268,19 @@ async def descargar_archivo(
     )
 
 
-@router.post("/desencriptar-archivo")
+@router.post(
+    "/desencriptar-archivo",
+    summary="Desencriptar / revertir protección",
+    description=(
+        "Usa la clave de usuario y opcionalmente la misma configuración por columna usada al proteger. "
+        "Si no se envía `configuraciones`, se cargan las guardadas para el archivo. "
+        "La respuesta es el **archivo desprotegido** (descarga)."
+    ),
+    responses={
+        **responses_file_binary(),
+        404: {"description": "Archivo procesado no encontrado."},
+    },
+)
 async def desencriptar_archivo(
     payload: DesencriptarArchivoRequest,
     usuario_actual: User = Depends(get_current_user),
@@ -271,10 +347,26 @@ async def desencriptar_archivo(
     )
 
 
-@router.post("/comparar-archivos", response_model=CompararArchivosResponse)
+@router.post(
+    "/comparar-archivos",
+    response_model=CompararArchivosResponse,
+    summary="Comparar integridad",
+    description=(
+        "Sube dos archivos tabulares: el **original** y el **desencriptado**. "
+        "Calcula coincidencia, filas distintas y detalle por columnas."
+    ),
+    responses={
+        **responses_auth(),
+        200: {"description": "Informe de comparación."},
+        400: {"description": "Tipos de archivo no permitidos."},
+    },
+)
 async def comparar_archivos(
-    archivo_original: UploadFile = File(...),
-    archivo_desencriptado: UploadFile = File(...),
+    archivo_original: UploadFile = File(..., description="Archivo original (CSV/Excel)"),
+    archivo_desencriptado: UploadFile = File(
+        ...,
+        description="Archivo obtenido tras desencriptar el procesado",
+    ),
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CompararArchivosResponse:
@@ -314,7 +406,16 @@ async def comparar_archivos(
     return CompararArchivosResponse(**resultado)
 
 
-@router.get("/logs-auditoria", response_model=list[LogAuditoriaResponse])
+@router.get(
+    "/logs-auditoria",
+    response_model=list[LogAuditoriaResponse],
+    summary="Historial de auditoría",
+    description="Últimos eventos del usuario actual (orden descendente por fecha, límite interno).",
+    responses={
+        **responses_auth(),
+        200: {"description": "Lista de entradas de auditoría."},
+    },
+)
 async def logs_auditoria(
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -337,7 +438,16 @@ async def logs_auditoria(
     ]
 
 
-@router.get("/dashboard", response_model=DashboardResponse)
+@router.get(
+    "/dashboard",
+    response_model=DashboardResponse,
+    summary="Métricas del usuario",
+    description="Totales de archivos procesados, sensibles detectados y uso por tipo de protección.",
+    responses={
+        **responses_auth(),
+        200: {"description": "Agregados para el usuario autenticado."},
+    },
+)
 async def dashboard(
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 import re
@@ -7,16 +7,35 @@ import re
 # ── Request Schemas ────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
-    model_config = {"str_strip_whitespace": True}
+    """Credenciales para obtener tokens JWT."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    username: str = Field(description="Nombre de usuario registrado")
+    password: str = Field(description="Contraseña en texto plano (HTTPS en producción)")
 
 
 class RegisterRequest(BaseModel):
-    username: str
+    """Datos para crear una cuenta de usuario."""
+
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "username": "analista01",
+                    "email": "analista@empresa.com",
+                    "password": "ClaveSegura1",
+                    "full_name": "Ana Lísta",
+                }
+            ]
+        },
+    )
+
+    username: str = Field(description="3–50 caracteres: letras, números y guión bajo")
     email: EmailStr
-    password: str
-    full_name: Optional[str] = None
+    password: str = Field(description="Mínimo 8 caracteres, una mayúscula y un dígito")
+    full_name: Optional[str] = Field(default=None, description="Nombre para mostrar")
 
     @field_validator("username")
     @classmethod
@@ -39,16 +58,18 @@ class RegisterRequest(BaseModel):
             raise ValueError(f"Contraseña requerida: {', '.join(errors)}")
         return v
 
-    model_config = {"str_strip_whitespace": True}
-
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    """Cuerpo para renovar el access token sin volver a iniciar sesión."""
+
+    refresh_token: str = Field(description="Token de refresco emitido en login")
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
+    """Cambio de contraseña para el usuario autenticado."""
+
+    current_password: str = Field(description="Contraseña actual")
+    new_password: str = Field(description="Nueva contraseña (mismas reglas que en registro)")
 
     @field_validator("new_password")
     @classmethod
@@ -61,13 +82,17 @@ class ChangePasswordRequest(BaseModel):
 # ── Response Schemas ───────────────────────────────────────────────────────────
 
 class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
+    """Tokens OAuth2-style (Bearer) para autorización en cabecera."""
+
+    access_token: str = Field(description="JWT de acceso (corta duración)")
+    refresh_token: str = Field(description="JWT de refresco (larga duración)")
+    token_type: str = Field(default="bearer", description="Siempre `bearer` para el header Authorization")
+    expires_in: int = Field(description="Segundos hasta expiración del access token")
 
 
 class UserResponse(BaseModel):
+    """Perfil público del usuario (sin hash de contraseña)."""
+
     id: str
     username: str
     email: str
@@ -80,4 +105,4 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
-    success: bool = True
+    success: bool = Field(default=True, description="Indicador de éxito en operaciones simples")

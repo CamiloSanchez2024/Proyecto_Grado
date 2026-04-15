@@ -1,0 +1,12 @@
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+venv
+.env
+.git
+secure_api/storage
+**/*.xlsx
+**/*.csv

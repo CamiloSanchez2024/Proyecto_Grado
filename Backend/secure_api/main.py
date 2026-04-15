@@ -1,5 +1,4 @@
 import logging
-import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -7,12 +6,14 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from secure_api.core.config import get_settings
+from secure_api.core.openapi import OPENAPI_TAGS
 from secure_api.db.session import engine, Base, AsyncSessionLocal
 from secure_api.middleware.logging_middleware import RequestLoggingMiddleware
 from secure_api.routers.auth_router import router as auth_router
 from secure_api.routers.users_router import router as users_router
 from secure_api.routers.proteccion_datos_router import router as proteccion_datos_router
-#from secure_api.routers.resources_router import router as resources_router
+from secure_api.schemas.common import HealthResponse
+# from secure_api.routers.resources_router import router as resources_router
 
 settings = get_settings()
 
@@ -65,18 +66,44 @@ async def _seed_admin() -> None:
 
 
 # ── App factory ────────────────────────────────────────────────────────────────
+_API_DESCRIPTION = """
+## CryptoUGroup — API de protección de datos
+
+REST API construida con **FastAPI**, persistencia **PostgreSQL** (SQLAlchemy async) y autenticación **JWT**
+(access + refresh). Las rutas bajo `/api/v1/proteccion-datos/*` gestionan archivos CSV/Excel: detección de
+columnas sensibles, aplicación de técnicas de protección por columna, auditoría y métricas.
+
+### Autenticación
+
+1. `POST /api/v1/auth/register` — alta de usuario (opcional según despliegue).
+2. `POST /api/v1/auth/login` — obtiene `access_token` y `refresh_token`.
+3. Enviar cabecera `Authorization: Bearer <access_token>` en rutas protegidas.
+4. `POST /api/v1/auth/refresh` — renovar access token con el refresh token.
+5. `POST /api/v1/auth/change-password` — cambio de contraseña (requiere access token).
+
+### Documentación interactiva
+
+- **Swagger UI:** `/docs`
+- **ReDoc:** `/redoc`
+- **OpenAPI JSON:** `/openapi.json`
+
+### Convenciones de error
+
+Las respuestas de error suelen incluir `detail` (mensaje o lista de validación). Códigos habituales: `401`
+no autenticado, `403` prohibido, `404` no encontrado, `409` conflicto (p. ej. usuario duplicado), `429`
+demasiados intentos de login.
+"""
+
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="CryptoUGroup API",
+    description=_API_DESCRIPTION,
     version=settings.APP_VERSION,
-    description=(
-        "## API protegida por JWT con respaldo de PostgreSQL\n\n"
-        "### Flujo de autenticación\n"
-        "1. `POST /api/v1/auth/register` — crear Usuario\n"
-        "2. `POST /api/v1/auth/login` — obtener acceso y actualizar tokens\n"
-        "3. Enviar `Authorization: Bearer <access_token>` en rutas protegidas\n"
-        "4. `POST /api/v1/auth/refresh` — renovar token de acceso silenciosamente\n"
-        "5. `POST /api/v1/auth/change-password` — actualizar contraseña\n"
-    ),
+    openapi_tags=OPENAPI_TAGS,
+    terms_of_service=None,
+    contact={"name": "CryptoUGroup"},
+    license_info={
+        "name": "Proyecto académico — consultar al autor",
+    },
     lifespan=lifespan,
 )
 
@@ -108,6 +135,12 @@ app.include_router(proteccion_datos_router, prefix=PREFIX)
 #app.include_router(resources_router, prefix=PREFIX)
 
 
-@app.get("/", tags=["Health"])
-async def health():
-    return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}
+@app.get(
+    "/",
+    response_model=HealthResponse,
+    tags=["Health"],
+    summary="Estado del servicio",
+    description="Comprueba que la API responde y devuelve nombre y versión configurados.",
+)
+async def health() -> HealthResponse:
+    return HealthResponse(status="ok", app=settings.APP_NAME, version=settings.APP_VERSION)

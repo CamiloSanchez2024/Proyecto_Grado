@@ -1,113 +1,269 @@
-# CryptoUGroup - Proyecto_Grado
+# CryptoUGroup — Proyecto de grado
 
-CryptoUGroup es una plataforma de proteccion de datos sensibles en archivos
-estructurados (Excel/CSV). El sistema permite detectar datos sensibles,
-protegerlos con distintos metodos, desencriptar para validacion y comparar
-integridad entre versiones.
+Plataforma para **detectar y proteger datos sensibles** en archivos tabulares (CSV / Excel). Incluye **autenticación JWT**, **procesamiento en backend (FastAPI)**, **persistencia en PostgreSQL**, **auditoría** y un **cliente web** (React + TypeScript + Vite) que consume la misma API.
 
-## Objetivo del proyecto
+> Documentación alineada con el estado actual del repositorio (abril 2026).
 
-Construir una solucion empresarial para:
+---
 
-- proteger informacion sensible por columna en archivos tabulares;
-- permitir validacion del proceso de proteccion mediante desencriptacion;
-- verificar integridad comparando archivo original vs desencriptado;
-- ofrecer trazabilidad completa mediante auditoria y logs.
+## Objetivos del sistema
 
-## Arquitectura actual
+- **Proteger información sensible por columna** en archivos estructurados (subida → análisis → configuración → procesamiento → descarga).
+- **Validar el proceso** mediante desencriptación controlada (clave solicitada en la operación).
+- **Verificar integridad** comparando el archivo original con una versión desencriptada.
+- **Trazabilidad**: auditoría en base de datos y registro de eventos en el flujo de protección.
 
-El proyecto se divide en dos bloques:
+---
 
-- `Backend/secure_api` (FastAPI + PostgreSQL + servicios de seguridad)
-- `Frontend/CryptoGroup` (app de escritorio en CustomTkinter; referencia de flujo)
-- `Frontend/crypto-group-web` (cliente web React + TypeScript + Vite; mismos endpoints)
+## Qué hace el sistema hoy (alcance funcional)
 
-### Backend (`Backend/secure_api`)
+| Área | Comportamiento actual |
+|------|------------------------|
+| Autenticación | Registro, login, refresh de tokens, perfil (`/auth/me`), cambio de contraseña. Contraseñas con **bcrypt** (rounds configurables). |
+| Archivos | Subida de `.csv`, `.xlsx`, `.xls`; validación de extensión y contenido no vacío; **sanitización del nombre** de archivo. |
+| Detección | Análisis de columnas sensibles (nombres + patrones vía clasificador). |
+| Protección | Por columna: `aes-256`, `hashing`, `tokenizacion`, `pseudonimizacion`, `anonimizacion`. |
+| Validación | Desencriptación y comparación de integridad entre archivos. |
+| Observabilidad | Dashboard de métricas, logs de auditoría; middleware de logging de peticiones. |
+| Arranque | Creación automática de tablas al iniciar; **usuario `admin` sembrado** si no existe (ver [Seguridad](#seguridad)). |
 
-Responsabilidades:
+Cliente web: flujos de **login/registro**, **carga**, **detección**, **configuración**, **procesamiento**, **desencriptación**, **comparación**, **dashboard** y **auditoría** (`Frontend/crypto-group-web`).
 
-- autenticacion/autorizacion JWT;
-- procesamiento y proteccion de archivos;
-- desencriptacion controlada por clave de usuario;
-- comparacion de integridad entre archivos;
-- auditoria en base de datos y archivo de logs.
+---
 
-Estructura principal:
+## Arquitectura
+
+### Vista general
 
 ```text
-Backend/secure_api/
-├── core/                      # config, seguridad, dependencias
-├── db/                        # sesion SQLAlchemy
-├── models/                    # user, archivo, audit_logs, configuraciones
-├── routers/                   # auth, users, proteccion_datos
-├── schemas/                   # contratos request/response
-├── services/                  # logica de negocio
-│   ├── data_classifier.py
-│   ├── encryption_service.py
-│   ├── decryption_service.py
-│   ├── file_processor.py
-│   ├── comparador_service.py
-│   └── audit_service.py
-├── storage/
-│   ├── uploads/
-│   ├── processed/
-│   └── logs/
-└── main.py
+┌─────────────────────────────────────────────────────────────────┐
+│  Cliente web (React + Vite)  ←→  API REST FastAPI (/api/v1)      │
+│  Axios + JWT + refresh       │  Routers: auth, users, datos     │
+└────────────────────────────────┼────────────────────────────────┘
+                                 │
+                    ┌────────────┴────────────┐
+                    │  Servicios de dominio    │
+                    │  (archivo, cifrado,      │
+                    │   auditoría, comparador) │
+                    └────────────┬────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+   PostgreSQL            Almacenamiento local      Logs / auditoría
+   (SQLAlchemy async)    (`storage/`: uploads,     (BD + middleware)
+                          processed, logs)
 ```
 
-### Frontend (`Frontend/CryptoGroup`)
+### Patrones y decisiones
 
-Responsabilidades:
+- **Backend**: API REST con **FastAPI**, capas **routers → servicios → modelos**, sesión **async** (SQLAlchemy + asyncpg), configuración con **Pydantic Settings** (`core/config.py`).
+- **Frontend**: SPA con **React 19**, **React Router**, **TanStack Query**, **Zustand** para estado; peticiones con **Axios** e interceptores para JWT/refresh (`Frontend/crypto-group-web/src/services/api.ts`).
+- **Despliegue**: `docker-compose` orquesta **PostgreSQL 16**, **backend** (imagen Python 3.12) y **frontend** (Nginx sirve estático y hace *reverse proxy* a `/api/` y documentación embebida vía `/docs`, `/openapi.json`, `/redoc`).
 
-- login/registro y consumo de API;
-- dashboard y navegacion por flujo;
-- seleccion de columnas a incluir;
-- configuracion de proteccion por columna;
-- ejecucion de procesamiento, desencriptacion y comparacion;
-- visualizacion de logs y estado del sistema.
+### Base URL de la API
 
-Tecnologia UI:
+- Desarrollo típico: `http://localhost:8000/api/v1`
+- Con stack Docker y proxy Nginx del frontend: el navegador puede usar rutas relativas bajo `/api/` (ver variable `VITE_API_URL` en build).
 
-- `customtkinter` (modo oscuro)
-- `CTkMessagebox`
-- `Pillow`
-- `requests`
+---
 
-### Frontend web (`Frontend/crypto-group-web`)
+## Estructura del repositorio
 
-Cliente SPA que consume la misma API (`VITE_API_URL`, por defecto `http://localhost:8000/api/v1`).
-Ver [Frontend/crypto-group-web/README.md](Frontend/crypto-group-web/README.md) para desarrollo, tests y Docker.
+```text
+Proyecto Grado/
+├── Backend/
+│   ├── Dockerfile                 # Imagen del API (uvicorn)
+│   ├── .dockerignore
+│   └── secure_api/
+│       ├── main.py                # FastAPI, CORS, lifespan, routers
+│       ├── core/
+│       │   ├── config.py          # Settings (.env), JWT, rate limit, storage
+│       │   ├── dependencies.py    # JWT Bearer, get_current_user
+│       │   ├── security.py        # Tokens JWT access/refresh
+│       │   └── exceptions.py
+│       ├── db/
+│       │   └── session.py         # Engine async, sesiones
+│       ├── middleware/
+│       │   └── logging_middleware.py
+│       ├── migrations/            # Alembic (env)
+│       ├── models/                # User, Archivo, logs, configuración
+│       ├── routers/
+│       │   ├── auth_router.py
+│       │   ├── users_router.py
+│       │   └── proteccion_datos_router.py
+│       ├── schemas/               # Pydantic (auth, protección)
+│       ├── services/
+│       │   ├── auth_service.py
+│       │   ├── password_service.py
+│       │   ├── rate_limiter.py
+│       │   ├── data_classifier.py
+│       │   ├── encryption_service.py
+│       │   ├── decryption_service.py
+│       │   ├── file_processor.py
+│       │   ├── comparador_service.py
+│       │   └── audit_service.py
+│       ├── utils/
+│       ├── storage/               # uploads, processed, logs (runtime)
+│       ├── requirements.txt
+│       └── .env.example
+├── Frontend/
+│   └── crypto-group-web/          # React + TS + Vite + Tailwind
+│       ├── src/
+│       │   ├── modules/           # Pantallas por flujo
+│       │   ├── services/        # API + auth
+│       │   ├── stores/          # Zustand
+│       │   ├── components/
+│       │   └── ...
+│       ├── Dockerfile             # Build estático + Nginx
+│       ├── nginx.conf             # Proxy a backend en Docker
+│       ├── package.json
+│       └── .env.example
+├── docker-compose.yml             # db + backend + frontend
+├── docker.env.example             # Variables para Compose
+└── README.md
+```
 
-## Funcionamiento del sistema (flujo)
+Más detalle del cliente web: [Frontend/crypto-group-web/README.md](Frontend/crypto-group-web/README.md).
 
-1. Usuario inicia sesion.
-2. Carga archivo (`.csv`, `.xlsx`, `.xls`).
-3. Backend analiza columnas sensibles (nombre + patrones).
-4. Usuario elige columnas a incluir en proteccion.
-5. Configura metodo por columna:
-   - `aes-256`
-   - `hashing`
-   - `tokenizacion`
-   - `pseudonimizacion`
-   - `anonimizacion`
-6. Procesa archivo y descarga archivo protegido.
-7. (Opcional) Desencripta archivo protegido con clave de usuario.
-8. (Opcional) Compara original vs desencriptado y obtiene reporte de
-   coincidencia/diferencias.
+---
+
+## Seguridad
+
+| Medida | Descripción |
+|--------|-------------|
+| **JWT** | Acceso y refresh con `python-jose` (HS256); rutas de datos protegidas con `HTTPBearer` y usuario actual. |
+| **Contraseñas** | **bcrypt** vía Passlib; rounds configurables (`BCRYPT_ROUNDS`). |
+| **Login** | **Rate limiting** en memoria por usuario (intentos / ventana); mitiga fuerza bruta. Comportamiento documentado para reemplazar por Redis en despliegues multi-instancia (`rate_limiter.py`). |
+| **Timing** | En login, verificación de hash incluso si el usuario no existe (reduce filtrado por tiempo). |
+| **Archivos** | Solo extensiones permitidas; rechazo de vacíos; **sanitización de nombres** al guardar. |
+| **Secretos** | `SECRET_KEY`, credenciales PostgreSQL y `CLAVE_MAESTRA_AES` deben definirse por entorno (`.env` / Compose); no deben versionarse valores reales. |
+| **Cifrado de datos** | Clave maestra AES para operaciones de protección; configurable por entorno. |
+| **CORS** | En `main.py`, `allow_origins=["*"]` facilita desarrollo; **en producción conviene restringir** al dominio del frontend. |
+| **Auditoría** | Eventos de subida, análisis, procesamiento, etc., sin exponer secretos en respuestas públicas. |
+| **Usuario admin por defecto** | Al iniciar, si no existe `admin`, se crea con contraseña documentada en logs (**cambiar o deshabilitar en producción**). |
+
+---
+
+## Requisitos previos
+
+- **Python** 3.11+ (el Dockerfile del backend usa 3.12).
+- **PostgreSQL** 14+ (local) o contenedor; Compose usa imagen **16-alpine**.
+- **Node.js** 22+ para el frontend web (recomendado en su README).
+
+---
+
+## Levantamiento del proyecto
+
+### 1) Variables de entorno del backend
+
+Copiar y editar:
+
+```bash
+cd Backend/secure_api
+copy .env.example .env
+```
+
+Ajustar al menos: `POSTGRES_*`, `SECRET_KEY`, `APP_HOST`, `APP_PORT`. Para operaciones de cifrado, definir también **`CLAVE_MAESTRA_AES`** (longitud adecuada para producción). Los campos adicionales aparecen en `core/config.py` (por ejemplo límites de rate limiting).
+
+### 2) Base de datos PostgreSQL
+
+**Opción A — Solo PostgreSQL (ejemplo):**
+
+```bash
+docker run --name CryptoUGroup-db -e POSTGRES_PASSWORD=CryptoUGroup -e POSTGRES_DB=secure_api_db -p 5432:5432 -d postgres:16-alpine
+```
+
+Alinear usuario/contraseña/base en `Backend/secure_api/.env`.
+
+**Opción B — Stack completo con Docker Compose** (recomendado para entorno integrado):
+
+```bash
+cd "c:\Users\Camilo S\Documents\Estudio\Proyectos\Proyecto Grado"
+copy docker.env.example .env
+docker compose up --build
+```
+
+Variables útiles (ver `docker.env.example`): `POSTGRES_*`, `SECRET_KEY`, `CLAVE_MAESTRA_AES`, `FRONTEND_PORT`, `BACKEND_PORT`, `VITE_API_URL` (en build del frontend, por defecto `/api/v1` para mismo origen vía Nginx).
+
+### 3) Backend (desarrollo local)
+
+Desde la raíz del repo, con el entorno virtual y dependencias:
+
+```bash
+cd Backend/secure_api
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Ejecutar la API (ajustar `PYTHONPATH` si hace falta; en Docker `PYTHONPATH=/app`):
+
+```bash
+cd ..\..
+set PYTHONPATH=Backend
+python -m uvicorn secure_api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+O desde `Backend` si `secure_api` está en el path:
+
+```bash
+cd Backend
+set PYTHONPATH=.
+python -m uvicorn secure_api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Documentación interactiva:
+
+- **Swagger UI:** http://127.0.0.1:8000/docs
+- **ReDoc:** http://127.0.0.1:8000/redoc
+- **OpenAPI JSON:** http://127.0.0.1:8000/openapi.json
+
+La API expone descripciones por etiqueta, `summary`/`description` por endpoint, esquemas Pydantic con campos documentados, códigos de respuesta habituales (`401`, `403`, `404`, `409`, `429`) y modelos tipados (incluida la respuesta de subida de archivo). La definición central de etiquetas OpenAPI está en `Backend/secure_api/core/openapi.py`.
+
+### 4) Frontend web (desarrollo local)
+
+```bash
+cd Frontend/crypto-group-web
+copy .env.example .env
+npm install
+npm run dev
+```
+
+Por defecto la app usa `VITE_API_URL=http://localhost:8000/api/v1`. Abrir **http://localhost:5173**.
+
+### 5) Tests del frontend
+
+```bash
+cd Frontend/crypto-group-web
+npm test
+```
+
+---
+
+## Comandos de referencia rápida
+
+| Objetivo | Comando |
+|----------|---------|
+| Instalar dependencias backend | `pip install -r Backend/secure_api/requirements.txt` |
+| Arrancar API (desarrollo) | `uvicorn secure_api.main:app --reload` (con `PYTHONPATH` apuntando al paquete) |
+| Instalar dependencias web | `cd Frontend/crypto-group-web && npm install` |
+| Servidor Vite | `npm run dev` |
+| Build producción web | `npm run build` |
+| Lint web | `npm run lint` |
+| Levantar todo con Docker | `docker compose up --build` |
+| Solo imagen web (manual) | `docker build -t cryptougroup-web Frontend/crypto-group-web` |
+
+---
 
 ## Endpoints principales
 
-Base URL: `http://localhost:8000/api/v1`
+**Base:** `http://localhost:8000/api/v1` (o `/api/v1` detrás del proxy en Docker).
 
-### Autenticacion
+**Autenticación**
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `GET /auth/me`
-- `POST /auth/change-password`
+- `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh` · `GET /auth/me` · `POST /auth/change-password`
 
-### Proteccion / Auditoria
+**Protección y auditoría**
 
 - `POST /proteccion-datos/subir-archivo`
 - `POST /proteccion-datos/analizar-archivo`
@@ -116,238 +272,36 @@ Base URL: `http://localhost:8000/api/v1`
 - `GET /proteccion-datos/dashboard`
 - `GET /proteccion-datos/logs-auditoria`
 
-### Validacion de desencriptacion e integridad
+**Validación**
 
 - `POST /proteccion-datos/desencriptar-archivo`
 - `POST /proteccion-datos/comparar-archivos`
 
-## Seguridad implementada
+**Salud**
 
-- JWT en rutas protegidas.
-- Sanitizacion de nombres de archivo.
-- Validacion estricta de tipos permitidos.
-- Claves fuera de codigo hardcodeado operativo (`.env`).
-- Clave de desencriptacion solicitada al usuario en tiempo de operacion.
-- No se exponen secretos ni claves en logs.
-- Auditoria de eventos de carga, analisis, procesamiento, desencriptacion y
-  comparacion.
+- `GET /` → estado de la API
 
-## Levantamiento del proyecto
+---
 
-## 1) Requisitos
+## Flujo funcional resumido
 
-- Python 3.11+ recomendado
-- PostgreSQL 14+ recomendado
+1. El usuario inicia sesión (JWT).
+2. Sube un archivo CSV/Excel.
+3. El backend analiza y sugiere columnas sensibles.
+4. El usuario configura método por columna y procesa.
+5. Descarga el archivo protegido.
+6. Opcional: desencripta con la clave correspondiente y compara integridad con el original.
 
-## 2) Configurar backend
+---
 
-```bash
-cd Backend/secure_api
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
+## Notas operativas
 
-Crear/ajustar archivo `Backend/secure_api/.env` con al menos:
+- Si el backend no conecta a la BD, revisar `POSTGRES_*` y que PostgreSQL esté accesible.
+- El **rate limit** de login es en memoria: en varias réplicas del mismo servicio, valorar un almacén compartido (p. ej. Redis).
+- Tras cambios en variables de entorno del frontend embebidas en build (`VITE_*`), reconstruir la imagen o ejecutar `npm run build` de nuevo.
 
-```env
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=tu_password
-POSTGRES_DB=secure_api_db
-SECRET_KEY=tu_secret_jwt_seguro
-APP_HOST=0.0.0.0
-APP_PORT=8000
-CLAVE_MAESTRA_AES=CAMBIAR_EN_PRODUCCION_CON_32_BYTES_MINIMO_1234
-```
+---
 
-Levantar backend:
+## Estado del código
 
-```bash
-uvicorn secure_api.main:app --reload
-```
-
-Swagger:
-
-- `http://127.0.0.1:8000/docs`
-
-## 3) Configurar frontend
-
-```bash
-cd Frontend/CryptoGroup
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-```
-
-## Notas de uso
-
-- Si el backend no conecta a BD, revisar variables `POSTGRES_*`.
-- Si cambias `requirements.txt` y falla parseo en `uv`, validar codificacion
-  UTF-8 del archivo.
-- Al cambiar codigo de UI, reiniciar `python app.py` para reflejar cambios.
-
-## Estado actual
-
-El proyecto esta funcional en:
-
-- autenticacion y control de acceso;
-- flujo completo de proteger archivo;
-- desencriptar archivo procesado;
-- comparar integridad de archivos;
-- dashboard y logs de auditoria en interfaz moderna.
-# CryptoUGroup - Proyecto_Grado
-
-Plataforma de proteccion de datos sensibles para archivos estructurados (CSV/Excel),
-con backend en FastAPI + PostgreSQL y frontend de escritorio en Python (Tkinter).
-
-## 1) Resultado construido
-
-Se implemento un flujo funcional completo:
-
-1. Autenticacion JWT (registro/login/refresh/me) existente y mantenida.
-2. Subida segura de archivos CSV/XLSX.
-3. Analisis automatico de columnas sensibles por:
-   - Nombre de columna objetivo.
-   - Patrones por regex (cedula, numero tarjeta, edad).
-4. Configuracion de proteccion por columna:
-   - `aes-256`
-   - `hashing`
-   - `tokenizacion`
-   - `pseudonimizacion`
-   - `anonimizacion`
-5. Procesamiento de archivo y generacion de salida protegida.
-6. Descarga del archivo procesado.
-7. Dashboard de metricas.
-8. Logs de auditoria (archivo + base de datos).
-
-## 2) Estructura principal
-
-```text
-Proyecto Grado/
-├── Backend/secure_api/
-│   ├── core/
-│   ├── db/
-│   ├── middleware/
-│   ├── models/
-│   │   ├── user.py
-│   │   ├── archivo.py
-│   │   ├── log_auditoria.py
-│   │   └── configuracion_encriptacion.py
-│   ├── routers/
-│   │   ├── auth_router.py
-│   │   ├── users_router.py
-│   │   └── proteccion_datos_router.py
-│   ├── schemas/
-│   │   └── proteccion_datos.py
-│   ├── services/
-│   │   ├── data_classifier.py
-│   │   ├── encryption_service.py
-│   │   ├── file_processor.py
-│   │   └── audit_service.py
-│   ├── storage/
-│   │   ├── uploads/
-│   │   ├── processed/
-│   │   └── logs/
-│   └── main.py
-└── Frontend/CryptoGroup/
-    ├── app.py
-    └── requirements.txt
-```
-
-
-## 3) Endpoints principales
-
-Base URL: `http://localhost:8000/api/v1`
-
-Autenticacion (existentes):
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `GET /auth/me`
-- `POST /auth/change-password`
-
-Proteccion de datos (nuevos):
-- `POST /proteccion-datos/subir-archivo`
-- `POST /proteccion-datos/analizar-archivo`
-- `POST /proteccion-datos/procesar-archivo`
-- `GET /proteccion-datos/descargar-archivo/{id_archivo}`
-- `GET /proteccion-datos/logs-auditoria`
-- `GET /proteccion-datos/dashboard`
-
-## 4) Seguridad aplicada
-
-- JWT para endpoints protegidos.
-- Sanitizacion de nombre de archivos.
-- Validacion estricta de tipo de archivo (CSV/XLS/XLSX).
-- Sin hardcode de claves operativas por endpoint.
-- Clave maestra configurable por `.env` (`CLAVE_MAESTRA_AES`).
-- Sin exposicion directa de valores sensibles en logs de auditoria.
-- Manejo de errores controlado en backend y frontend.
-
-## 5) Instalacion
-
-## 5.1 Requisitos
-
-- Python 3.11+ recomendado
-- PostgreSQL 14+ recomendado
-
-## 5.2 Backend
-
-```bash
-cd Backend/secure_api
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Crear `.env` tomando como base `.env.example` y agregar:
-
-```env
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=tu_password
-POSTGRES_DB=secure_api_db
-SECRET_KEY=tu_secret_jwt_seguro
-APP_HOST=0.0.0.0
-APP_PORT=8000
-CLAVE_MAESTRA_AES=CAMBIAR_EN_PRODUCCION_CON_32_BYTES_MINIMO_1234
-```
-
-Ejecutar backend:
-
-```bash
-uvicorn secure_api.main:app --reload
-```
-
-## 6.3 Frontend
-
-```bash
-cd Frontend/CryptoGroup
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-```
-
-## 7) Testing sugerido
-
-Pruebas minimas recomendadas:
-- Unitarias: `data_classifier`, `encryption_service`, `file_processor`.
-- Integracion: flujo completo `subir -> analizar -> procesar -> descargar`.
-- Seguridad: archivo invalido, archivo vacio, token invalido.
-- Performance basica: CSV con volumen alto de filas.
-
-## 8) Notas finales
-
-- La logica de procesamiento se ejecuta en backend.
-- El frontend solo consume endpoints.
-- La base esta lista para crecer con migraciones Alembic y mas pruebas automatizadas.
-
-
-## 9) Docker
-creacion imagen postgress
-docker run --name CryptoUGroup -e POSTGRES_PASSWORD=CryptoUGroup -p 5432:5432 -d postgres:15
+El repositorio concentra el **backend FastAPI** y el **frontend web**. La documentación histórica del cliente de escritorio CustomTkinter no forma parte de este árbol; el flujo oficial documentado en código es el **cliente React** bajo `Frontend/crypto-group-web`.

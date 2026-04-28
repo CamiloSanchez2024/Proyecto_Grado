@@ -134,7 +134,7 @@ async def analizar_archivo(
     id_archivo: str = Query(
         ...,
         description="Identificador devuelto por `POST /subir-archivo`",
-        example="550e8400-e29b-41d4-a716-446655440000",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
     ),
     usuario_actual: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

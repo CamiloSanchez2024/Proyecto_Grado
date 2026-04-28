@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import * as proteccionService from '@/services/proteccionService'
@@ -73,6 +74,11 @@ export function DecryptionPage() {
       <Button type="button" disabled={mut.isPending} onClick={() => mut.mutate()}>
         {mut.isPending ? 'Desencriptando…' : 'Desencriptar y descargar'}
       </Button>
+      <div className="flex justify-end">
+        <Link to="/app/comparar">
+          <Button type="button">Siguiente: Comparar archivos</Button>
+        </Link>
+      </div>
     </div>
   )
 }

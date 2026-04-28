@@ -1,9 +1,11 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
 from secure_api.core.config import get_settings
 from secure_api.core.openapi import OPENAPI_TAGS
@@ -29,11 +31,27 @@ logger = logging.getLogger("api")
 async def lifespan(app: FastAPI):
     logger.info("Api Iniciada — Creando tablas si no existen...")
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    # Seed a default admin user
-    await _seed_admin()
+    max_retries = 10
+    retry_delay_seconds = 2
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            # Seed a default admin user
+            await _seed_admin()
+            break
+        except (ConnectionRefusedError, OSError, SQLAlchemyError) as exc:
+            if attempt == max_retries:
+                logger.exception("No se pudo conectar a PostgreSQL tras %s intentos", max_retries)
+                raise
+            logger.warning(
+                "PostgreSQL no listo (intento %s/%s): %s. Reintentando en %ss...",
+                attempt,
+                max_retries,
+                exc,
+                retry_delay_seconds,
+            )
+            await asyncio.sleep(retry_delay_seconds)
 
     logger.info("Tablas listas y admin creado (si no existía)")
     yield

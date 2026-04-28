@@ -4,9 +4,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      POSTGRES_DB: ${POSTGRES_DB:-secure_api_db}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CryptoUGroup}
+      POSTGRES_DB: ${POSTGRES_DB:-DB_CryptoUGroup}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,14 +22,14 @@ services:
       dockerfile: Dockerfile
     command: uvicorn secure_api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/secure_api
     environment:
-      POSTGRES_HOST: db
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      POSTGRES_DB: ${POSTGRES_DB:-secure_api_db}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CryptoUGroup}
+      POSTGRES_DB: ${POSTGRES_DB:-DB_CryptoUGroup}
       APP_HOST: 0.0.0.0
       APP_PORT: "8000"
-      SECRET_KEY: ${SECRET_KEY:-cambia-esto-en-produccion-usa-un-secreto-largo-y-aleatorio}
+      SECRET_KEY: ${SECRET_KEY:-a2b717c0187f9b286cd3f0eb5db69526009686319285c3896cb966abfd83f5e0}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
@@ -37,7 +37,7 @@ services:
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       RATE_LIMIT_ATTEMPTS: ${RATE_LIMIT_ATTEMPTS:-5}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-300}
-      CLAVE_MAESTRA_AES: ${CLAVE_MAESTRA_AES:-CAMBIAR_EN_PRODUCCION_CON_32_BYTES_MINIMO_1234}
+      CLAVE_MAESTRA_AES: ${CLAVE_MAESTRA_AES:-7e4e62cda6a107906bb51b478ea121622c37275f1a03373fb22ce1333e6b3090}
       RUTA_STORAGE: ${RUTA_STORAGE:-storage}
     volumes:
       - ./Backend/secure_api:/app/secure_api
@@ -45,6 +45,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     ports:
       - "${BACKEND_PORT:-8000}:8000"
 
@@ -64,7 +76,8 @@ services:
       - ./Frontend/crypto-group-web:/app
       - frontend_node_modules:/app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
 

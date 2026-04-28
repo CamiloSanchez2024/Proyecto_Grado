@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Build ---
-FROM node:22.12-alpine AS builder
+FROM node:22.13-alpine AS builder
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 WORKDIR /app

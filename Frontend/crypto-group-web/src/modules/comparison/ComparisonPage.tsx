@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import * as proteccionService from '@/services/proteccionService'
 import { useToast } from '@/contexts/useToast'
@@ -81,6 +82,12 @@ export function ComparisonPage() {
           </pre>
         </div>
       ) : null}
+
+      <div className="flex justify-end">
+        <Link to="/app/logs">
+          <Button type="button">Siguiente: Logs auditoría</Button>
+        </Link>
+      </div>
     </div>
   )
 }

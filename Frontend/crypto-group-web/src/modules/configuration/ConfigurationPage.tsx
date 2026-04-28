@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button'
+import { Link } from 'react-router-dom'
 import { Select } from '@/components/ui/Select'
 import { TIPOS_PROTECCION, type TipoProteccion } from '@/types/proteccion.types'
 import { useArchivoStore } from '@/stores/archivoStore'
@@ -31,10 +32,17 @@ export function ConfigurationPage() {
 
   if (objetivo.length === 0) {
     return (
-      <div className="rounded-xl border border-[var(--color-border-default)] bg-white p-8 text-center">
-        <p className="text-[var(--color-text-muted)]">
-          No hay columnas para configurar. Ve a Detectar datos y guarda selección.
-        </p>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[var(--color-border-default)] bg-white p-8 text-center">
+          <p className="text-[var(--color-text-muted)]">
+            No hay columnas para configurar. Ve a Detectar datos y guarda selección.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <Link to="/app/procesar">
+            <Button type="button">Siguiente: Procesar archivo</Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -80,10 +88,11 @@ export function ConfigurationPage() {
           )
         })}
       </div>
-      <div className="flex justify-end">
-        <Button onClick={guardar}>
-          Guardar configuración
-        </Button>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button onClick={guardar}>Guardar configuración</Button>
+        <Link to="/app/procesar">
+          <Button type="button">Siguiente: Procesar archivo</Button>
+        </Link>
       </div>
     </div>
   )

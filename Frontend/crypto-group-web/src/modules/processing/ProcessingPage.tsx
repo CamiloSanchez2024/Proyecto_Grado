@@ -154,18 +154,16 @@ export function ProcessingPage() {
         <p className="text-sm text-[var(--color-text-secondary)]">{estado}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Link to="/app/cargar">
-          <Button variant="secondary" type="button">
-            Cargar archivo
-          </Button>
-        </Link>
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="button" disabled={runProcess.isPending} onClick={() => void iniciar()}>
           Iniciar procesamiento
         </Button>
         <Button variant="secondary" type="button" disabled={downloadMut.isPending} onClick={() => downloadMut.mutate()}>
           Descargar último resultado
         </Button>
+        <Link to="/app/desencriptar">
+          <Button type="button">Siguiente: Desencriptar</Button>
+        </Link>
       </div>
 
       <textarea

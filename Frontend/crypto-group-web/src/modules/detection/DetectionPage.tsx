@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useArchivoStore } from '@/stores/archivoStore'
@@ -37,8 +38,15 @@ export function DetectionPage() {
 
   if (columnasDetectadas.length === 0) {
     return (
-      <div className="rounded-xl border border-[var(--color-border-default)] bg-white p-8 text-center">
-        <p className="text-[var(--color-text-muted)]">Primero carga y analiza un archivo en &quot;Cargar archivo&quot;.</p>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[var(--color-border-default)] bg-white p-8 text-center">
+          <p className="text-[var(--color-text-muted)]">Primero carga y analiza un archivo en &quot;Cargar archivo&quot;.</p>
+        </div>
+        <div className="flex justify-end">
+          <Link to="/app/configurar">
+            <Button type="button">Siguiente: Configurar encriptación</Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -84,6 +92,11 @@ export function DetectionPage() {
         <Button variant="secondary" onClick={sugeridas}>
           Usar sugeridas (sensibles)
         </Button>
+      </div>
+      <div className="flex justify-end">
+        <Link to="/app/configurar">
+          <Button type="button">Siguiente: Configurar encriptación</Button>
+        </Link>
       </div>
     </div>
   )

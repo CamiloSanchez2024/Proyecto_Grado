@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
@@ -115,6 +116,12 @@ export function AuditLogsPage() {
             </table>
           )}
         </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Link to="/app/inicio">
+          <Button type="button" variant="secondary">Volver al inicio</Button>
+        </Link>
       </div>
     </div>
   )

@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { FileDropzone } from '@/components/common/FileDropzone'
+import { Button } from '@/components/ui/Button'
 import * as proteccionService from '@/services/proteccionService'
 import { useArchivoStore } from '@/stores/archivoStore'
 import { useToast } from '@/contexts/useToast'
@@ -60,6 +62,12 @@ export function UploadPage() {
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="flex justify-end">
+        <Link to="/app/detectar">
+          <Button type="button">Siguiente: Detectar datos</Button>
+        </Link>
       </div>
     </div>
   )

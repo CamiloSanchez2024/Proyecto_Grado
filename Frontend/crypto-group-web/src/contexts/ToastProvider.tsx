@@ -25,26 +25,56 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex max-w-sm flex-col gap-2">
+      <div className="pointer-events-none fixed inset-x-0 top-5 z-[100] flex items-center justify-center px-4">
+        <div className="flex w-full max-w-xl flex-col gap-2">
         {items.map((t) => (
           <ToastItem key={t.id} message={t.message} kind={t.kind} />
         ))}
+        </div>
       </div>
     </ToastContext.Provider>
   )
 }
 
 function ToastItem({ message, kind }: { message: string; kind: ToastKind }) {
-  const cls =
+  const styleByKind =
     kind === 'success'
-      ? 'border-emerald-700 bg-emerald-950/95 text-emerald-100'
+      ? {
+          container: 'border-emerald-300/60 bg-emerald-50/95 text-emerald-900',
+          iconBg: 'bg-emerald-100 text-emerald-700',
+          icon: '✓',
+        }
       : kind === 'error'
-        ? 'border-red-700 bg-red-950/95 text-red-100'
+        ? {
+            container: 'border-red-300/60 bg-red-50/95 text-red-900',
+            iconBg: 'bg-red-100 text-red-700',
+            icon: '!',
+          }
         : kind === 'warning'
-          ? 'border-amber-700 bg-amber-950/95 text-amber-100'
-          : 'border-[var(--color-border-subtle)] bg-[var(--color-panel)] text-[var(--color-text-primary)]'
+          ? {
+              container: 'border-amber-300/60 bg-amber-50/95 text-amber-900',
+              iconBg: 'bg-amber-100 text-amber-700',
+              icon: '!',
+            }
+          : {
+              container: 'border-sky-300/60 bg-sky-50/95 text-sky-900',
+              iconBg: 'bg-sky-100 text-sky-700',
+              icon: 'i',
+            }
 
   return (
-    <div className={`pointer-events-auto rounded-lg border px-4 py-3 text-sm shadow-lg ${cls}`}>{message}</div>
+    <div
+      className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-[0_10px_35px_rgba(2,6,23,0.15)] backdrop-blur-sm ${styleByKind.container}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${styleByKind.iconBg}`}
+        aria-hidden="true"
+      >
+        {styleByKind.icon}
+      </span>
+      <p className="font-medium leading-5">{message}</p>
+    </div>
   )
 }

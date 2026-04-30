@@ -160,13 +160,6 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-7">
-      <section>
-        <h2 className="text-3xl font-semibold tracking-tight text-[var(--color-text-primary)]">Bienvenido al Panel de Control</h2>
-        <p className="mt-1 text-[15px] text-[var(--color-text-secondary)]">
-          Gestione la seguridad y procesamiento de sus datos desde una vista centralizada.
-        </p>
-      </section>
-
       {q.isError ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-sm text-amber-700">No se pudo cargar el dashboard. Mostrando valores en cero.</p>

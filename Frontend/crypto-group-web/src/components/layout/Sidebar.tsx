@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 const items = [
@@ -27,17 +27,26 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className={cn('flex shrink-0 flex-col bg-[#0D1B4B] text-white transition-all', isCollapsed ? 'w-20' : 'w-60')}>
-      <div className={cn('flex items-center px-5 py-5', isCollapsed ? 'justify-center' : 'gap-3')}>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-bold">
+      <Link
+        to="/app/inicio"
+        onClick={onNavigate}
+        className={cn(
+          'flex items-center rounded-lg px-5 py-5 outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60',
+          isCollapsed ? 'justify-center' : 'gap-3',
+        )}
+        title="Ir al inicio"
+        aria-label="Ir al panel de inicio (dashboard)"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-bold">
           G
         </div>
         {!isCollapsed ? (
-          <div>
+          <div className="min-w-0">
             <span className="text-sm font-semibold tracking-tight">CryptoUGroup</span>
             <p className="text-[11px] text-white/60">Protección de datos</p>
           </div>
         ) : null}
-      </div>
+      </Link>
 
       <div className={cn('px-3', isCollapsed ? 'pb-2' : 'pb-3')}>
         <button

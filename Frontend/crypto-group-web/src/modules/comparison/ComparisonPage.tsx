@@ -53,9 +53,14 @@ export function ComparisonPage() {
         </div>
       </div>
 
-      <Button type="button" disabled={mut.isPending || !orig || !dec} onClick={() => mut.mutate()}>
-        {mut.isPending ? 'Comparando…' : 'Ejecutar comparación'}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" disabled={mut.isPending || !orig || !dec} onClick={() => mut.mutate()}>
+          {mut.isPending ? 'Comparando…' : 'Ejecutar comparación'}
+        </Button>
+        <Link to="/app/logs">
+          <Button type="button">Siguiente: Logs auditoría</Button>
+        </Link>
+      </div>
 
       {data ? (
         <div className="space-y-4 rounded-xl border border-[var(--color-border-default)] bg-white p-5">
@@ -82,12 +87,6 @@ export function ComparisonPage() {
           </pre>
         </div>
       ) : null}
-
-      <div className="flex justify-end">
-        <Link to="/app/logs">
-          <Button type="button">Siguiente: Logs auditoría</Button>
-        </Link>
-      </div>
     </div>
   )
 }

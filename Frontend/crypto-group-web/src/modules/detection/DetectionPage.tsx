@@ -54,11 +54,11 @@ export function DetectionPage() {
   return (
     <div className="space-y-4">
       <div className="overflow-hidden rounded-xl border border-[var(--color-border-default)] bg-white">
-        <div className="grid grid-cols-4 gap-2 border-b border-[var(--color-border-default)] bg-[var(--color-surface)] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+        <div className="grid grid-cols-4 justify-items-center gap-2 border-b border-[var(--color-border-default)] bg-[var(--color-surface)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
           <span>Columna</span>
           <span>Tipo detectado</span>
           <span>Tipo de Sensibilidad</span>
-          <span className="text-center">Incluida</span>
+          <span>Incluida</span>
         </div>
         <div className="max-h-[420px] overflow-auto">
           {columnasDetectadas.map((col) => {
@@ -67,11 +67,11 @@ export function DetectionPage() {
             return (
               <div
                 key={col}
-                className="grid grid-cols-4 items-center gap-2 border-b border-[var(--color-border-subtle)] px-4 py-3 text-sm hover:bg-[var(--color-surface)] transition-colors"
+                className="grid grid-cols-4 items-center justify-items-center gap-2 border-b border-[var(--color-border-subtle)] px-4 py-3 text-center text-sm hover:bg-[var(--color-surface)] transition-colors"
               >
                 <span className="font-medium text-[var(--color-text-primary)]">{col}</span>
                 <span className="text-[var(--color-text-secondary)]">{sensible ? 'Sensible' : 'General'}</span>
-                <span>
+                <span className="flex justify-center">
                   <Badge tone={sensible ? 'alto' : 'bajo'}>{sensible ? 'ALTO' : 'BAJO'}</Badge>
                 </span>
                 <label className="flex justify-center">

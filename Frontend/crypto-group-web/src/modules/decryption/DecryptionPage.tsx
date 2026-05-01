@@ -71,10 +71,10 @@ export function DecryptionPage() {
         </div>
       </div>
 
-      <Button type="button" disabled={mut.isPending} onClick={() => mut.mutate()}>
-        {mut.isPending ? 'Desencriptando…' : 'Desencriptar y descargar'}
-      </Button>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" disabled={mut.isPending} onClick={() => mut.mutate()}>
+          {mut.isPending ? 'Desencriptando…' : 'Desencriptar y descargar'}
+        </Button>
         <Link to="/app/comparar">
           <Button type="button">Siguiente: Comparar archivos</Button>
         </Link>
